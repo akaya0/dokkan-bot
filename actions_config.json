@@ -1,0 +1,11 @@
+{
+    "actions": {
+        "start_level": "./templates/start_level_template.png",
+        "confirm_team": "./templates/confirm_team_template.png",
+        "collect_reward": "./templates/collect_reward_template.png",
+        "confirm_completion": "./templates/confirm_completion_template.png",
+        "friend_request": "./templates/friend_request_template.png",
+        "friend_acc": "./templates/friend_acc_template.png",
+        "next_level": "./templates/next_level_template.png"
+    }
+}
