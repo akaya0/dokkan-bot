@@ -15,7 +15,12 @@ This program connects to an Android device using ADB (Android Debug Bridge), cap
 
 1. Install Python from the [official website](https://www.python.org/).
 2. Install ADB on your system. Follow the instructions [here](https://developer.android.com/studio/command-line/adb) to set it up.
-3. Install the required Python libraries using pip:
+3. Clone this repository and navigate to the project directory:
+    ```bash
+    git clone https://github.com/dokkan-bot.git
+    cd dokkan-bot
+    ```
+4. Install the required Python libraries using pip:
     ```bash
     pip install opencv-python-headless numpy adbutils
     ```
