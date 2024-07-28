@@ -42,8 +42,6 @@ This program connects to an Android device using ADB (Android Debug Bridge), cap
 
 ## To-Do
 
-- **Difficulty Selection** I think it's fine as is to just farm infinitely, but I definitely need to add difficulty selection for coin farming
-- **Story Mode**: Self-explanatory
 - **Tournament**: I think the most important one is to add a tournament support, I mean at a normal rate there's no way to beat it otherwise?!
 
 ## Disclaimer
