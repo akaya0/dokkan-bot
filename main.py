@@ -7,8 +7,14 @@ import io
 import json
 import os
 
-# Connect to the device
+scale = 1.0
 device = adb.device()
+
+def scaling():
+    global scale
+    
+    result = device.shell("wm size")
+    print(f"{result}") 
 
 def take_screenshot():
     try:
@@ -49,42 +55,52 @@ def ensure_same_type_and_depth(img, template):
         template = template.astype(np.float32) if img.dtype == np.float32 else template.astype(np.uint8)
     return img, template
 
-def resize_image(image, target_size):
-    
-    return cv2.resize(image, target_size, interpolation=cv2.INTER_LINEAR)
+def tap(x, y):
+    print(f"Attempting to tap at coordinates: ({x}, {y})")
+    result = device.shell(f"input tap {x} {y}")
+    print(f"Tap result: {result}")
 
-def find_template(screenshot, template, resize_target=None, threshold=0.85):
+def find_template(screenshot, template, threshold=0.8,):
+    global scale
+    
+    screenshot_gray = cv2.resize(template, (0, 0), fx=scale, fy=scale)
     # Convert images to grayscale
     screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY) if len(screenshot.shape) == 3 else screenshot
     template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY) if len(template.shape) == 3 else template
+
+    # Normalize images
+    screenshot_gray = cv2.normalize(screenshot_gray, None, 0, 255, cv2.NORM_MINMAX)
+    template_gray = cv2.normalize(template_gray, None, 0, 255, cv2.NORM_MINMAX)
     
-    # Resize screenshot to match template resolution if needed
-    if resize_target:
-        screenshot_gray = resize_image(screenshot_gray, resize_target)
     
-    # Perform template matching
+    
+    
     result = cv2.matchTemplate(screenshot_gray, template_gray, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-
     # Return the location if the match value exceeds the threshold
     return max_loc if max_val > threshold else None
-    
-def tap(x, y):
-    device.shell(f"input tap {x} {y}")
 
 def perform_action(screenshot, template, action_name, last_performed, timeout=10):
+    global scale
+    
     current_time = time.time()
     if action_name in last_performed and current_time - last_performed[action_name] < timeout:
+        print(f"Action '{action_name}' was performed recently. Skipping.")
         return False
-    
+
     location = find_template(screenshot, template)
     if location:
-        tap(location[0] + template.shape[1] // 2, location[1] + template.shape[0] // 2)
+        # Adjust tap coordinates based on the scale
+        tap_x = int(location[0] + (template.shape[1] / 2) * scale)
+        tap_y = int(location[1] + (template.shape[0] / 2) * scale)
+        print(f"Found template at location: ({location[0]}, {location[1]}) with scale: {scale}")
+        print(f"Calculated tap coordinates: ({tap_x}, {tap_y})")
+        tap(tap_x, tap_y)
         cls()
-        print(f"last action performed: {action_name}")
+        print(f"Last action performed: {action_name}")
         last_performed[action_name] = current_time
         return True
-    return False
+    print(f"Template not found for action: {action_name}")
 
 def load_actions_from_config(config_path):
     with open(config_path, 'r') as file:
@@ -94,7 +110,7 @@ def load_actions_from_config(config_path):
         actions[action_name] = load_image(open(template_path, 'rb'))
     return actions
 
-def get_diff(prompt, min_value, max_value):
+def get_input(prompt, min_value, max_value):
     while True:
         try:
             value = int(input(prompt))
@@ -115,8 +131,9 @@ def main():
     actions = load_actions_from_config(config_path)
     last_performed = {}
     
-    difficulty = get_diff("Difficulty [(0)EZA (1)hard (2)z-hard (3)super (4)super2 (5)super3]: ", 0, 5)
-
+    
+    difficulty = get_input("Difficulty [(0)EZA (1)hard (2)z-hard (3)super (4)super2 (5)super3]: ", 0, 5)
+ 
     cls()
     
     while True:
@@ -156,7 +173,7 @@ def main():
             continue
         
         for action_name, template in actions.items():
-            if action_name not in ['friend_acc', 'friend_request', 'hard_level', 'z-hard_level', 'super_level', 'hard_level_s', 'z-hard_level_s', 'super_level_s','attempt_again']:
+            if action_name not in ['friend_acc', 'friend_request', 'hard_level', 'z-hard_level', 'super_level', 'super2_level', 'super3_level' 'hard_level_s', 'z-hard_level_s', 'super_level_s','attempt_again']:
                 if perform_action(screenshot, template, action_name, last_performed):
                     break
 
