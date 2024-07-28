@@ -6,6 +6,18 @@
         "confirm_completion": "./templates/confirm_completion_template.png",
         "friend_request": "./templates/friend_request_template.png",
         "friend_acc": "./templates/friend_acc_template.png",
-        "next_level": "./templates/next_level_template.png"
+        "next_level": "./templates/next_level_template.png",
+        "hard_level": "./templates/hard_level.png",
+        "z-hard_level": "./templates/z-hard_level.png",
+        "super_level": "./templates/super2_level.png",
+        "super2_level": "./templates/super2_level.png",
+        "super3_level": "./templates/super2_level.png",
+        "hard_level_s": "./templates/hard_level_s.png",
+        "z-hard_level_s": "./templates/z-hard_level_s.png",
+        "super_level_s": "./templates/super_level_s.png",
+        "level_menu": "./templates/level_menu.png",
+        "attempt_again": "./templates/attempt_again.png",
+        "level_up": "./templates/level_up.png",
+        "energy_rep": "./templates/energy_rep.png"
     }
 }
