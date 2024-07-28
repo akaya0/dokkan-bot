@@ -28,7 +28,7 @@ This program connects to an Android device using ADB (Android Debug Bridge), cap
 ## Usage
 
 1. Ensure your Android device is connected to your computer with USB debugging enabled.
-2. Choose the EZA to farm
+2. Choose the level to farm
 3. Run the script:
     ```bash
     python main.py
@@ -50,7 +50,7 @@ This software is provided "as is", without warranty of any kind, express or impl
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
 ## Acknowledgments
 
