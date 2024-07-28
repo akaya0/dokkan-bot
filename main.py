@@ -2,20 +2,40 @@ import cv2
 import numpy as np
 import time
 from adbutils import adb
+import adbutils
 import os
 import io
 import json
 import os
+import math
+import subprocess
 
 scale = 1.0
-device = adb.device()
 
-def scaling():
-    global scale
-    
-    result = device.shell("wm size")
-    print(f"{result}") 
+device = adbutils.AdbClient(host="127.0.0.1", port=5037).device() 
+baseY = 1520   
+baseX = 720
 
+result = device.shell("wm size")
+if 'size' in result:
+    resolution = result.split(":")[-1].strip()
+    width, height = resolution.split('x')
+            
+    width_ratio =  int(width) / baseX 
+    height_ratio = int(height) / baseY         
+                    
+    diagonal1 = math.sqrt(int(width)**2 + int(height)**2)
+    diagonal2 = math.sqrt(baseX**2 + baseY**2)
+    overall_scale_ratio = diagonal1 / diagonal2
+            
+    print(f"{overall_scale_ratio}")
+    print(f"Standard{baseX}x{baseY}")
+    print(f"Standard{width}x{height}")
+            
+    scale = overall_scale_ratio
+            
+    print(f"Scaling: {scale}") 
+   
 def take_screenshot():
     try:
         # Execute the screencap command and capture the output
@@ -50,36 +70,45 @@ def load_image(image_bytes):
     return img
 
 def ensure_same_type_and_depth(img, template):
-    if img.dtype != template.dtype or img.shape[2] != template.shape[2]:
+    if img.dtype != template.dtype:
         img = img.astype(np.float32) if template.dtype == np.float32 else img.astype(np.uint8)
         template = template.astype(np.float32) if img.dtype == np.float32 else template.astype(np.uint8)
     return img, template
 
-def tap(x, y):
-    print(f"Attempting to tap at coordinates: ({x}, {y})")
-    result = device.shell(f"input tap {x} {y}")
-    print(f"Tap result: {result}")
 
-def find_template(screenshot, template, threshold=0.8,):
-    global scale
+def resize_image(image):
+    global width_ratio, height_ratio
+    original_height, original_width = image.shape[:2]
+
+    # Calculate the new dimensions
+    new_width = int(original_width * width_ratio)
+    new_height = int(original_height * height_ratio)
+    print(f"{new_width}x{new_height}")
+    # Resize the image
+    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
     
-    screenshot_gray = cv2.resize(template, (0, 0), fx=scale, fy=scale)
-    # Convert images to grayscale
+    return resized_image
+
+
+def find_template(screenshot, template, threshold=0.8):
+    #Convert images to grayscale
     screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY) if len(screenshot.shape) == 3 else screenshot
     template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY) if len(template.shape) == 3 else template
-
-    # Normalize images
-    screenshot_gray = cv2.normalize(screenshot_gray, None, 0, 255, cv2.NORM_MINMAX)
-    template_gray = cv2.normalize(template_gray, None, 0, 255, cv2.NORM_MINMAX)
     
+    # Resize screenshot
+    template_gray = resize_image(template_gray)
     
-    
-    
+    # Perform template matching
     result = cv2.matchTemplate(screenshot_gray, template_gray, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
     # Return the location if the match value exceeds the threshold
     return max_loc if max_val > threshold else None
-
+    
+def tap(x, y):
+    device.shell(f"input tap {x} {y}")
+    
+    
 def perform_action(screenshot, template, action_name, last_performed, timeout=10):
     global scale
     
@@ -131,18 +160,16 @@ def main():
     actions = load_actions_from_config(config_path)
     last_performed = {}
     
-    
     difficulty = get_input("Difficulty [(0)EZA (1)hard (2)z-hard (3)super (4)super2 (5)super3]: ", 0, 5)
- 
-    cls()
-    
+
+
     while True:
         image_bytes = take_screenshot()
         screenshot = load_image(image_bytes)
         
         match difficulty:
             case 0: 
-                continue
+                print(".")
             case 1:
                 if perform_action(screenshot, actions['hard_level'], 'hard_level', last_performed):
                     continue
