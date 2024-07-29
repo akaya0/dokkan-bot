@@ -8,9 +8,6 @@ import io
 import json
 import os
 import math
-import subprocess
-
-scale = 1.0
 
 device = adbutils.AdbClient(host="127.0.0.1", port=5037).device() 
 baseY = 1520   
@@ -28,14 +25,8 @@ if 'size' in result:
     diagonal2 = math.sqrt(baseX**2 + baseY**2)
     overall_scale_ratio = diagonal1 / diagonal2
             
-    print(f"{overall_scale_ratio}")
-    print(f"Standard{baseX}x{baseY}")
-    print(f"Standard{width}x{height}")
+    print(f"Overall Scale Ratio{overall_scale_ratio}")
             
-    scale = overall_scale_ratio
-            
-    print(f"Scaling: {scale}") 
-   
 def take_screenshot():
     try:
         # Execute the screencap command and capture the output
@@ -79,11 +70,9 @@ def ensure_same_type_and_depth(img, template):
 def resize_image(image):
     global width_ratio, height_ratio
     original_height, original_width = image.shape[:2]
-
     # Calculate the new dimensions
     new_width = int(original_width * width_ratio)
     new_height = int(original_height * height_ratio)
-    print(f"{new_width}x{new_height}")
     # Resize the image
     resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
     
@@ -109,27 +98,20 @@ def tap(x, y):
     device.shell(f"input tap {x} {y}")
     
     
-def perform_action(screenshot, template, action_name, last_performed, timeout=10):
-    global scale
-    
+def perform_action(screenshot, template, action_name, last_performed, timeout=2):
     current_time = time.time()
+    
     if action_name in last_performed and current_time - last_performed[action_name] < timeout:
-        print(f"Action '{action_name}' was performed recently. Skipping.")
         return False
 
     location = find_template(screenshot, template)
     if location:
-        # Adjust tap coordinates based on the scale
-        tap_x = int(location[0] + (template.shape[1] / 2) * scale)
-        tap_y = int(location[1] + (template.shape[0] / 2) * scale)
-        print(f"Found template at location: ({location[0]}, {location[1]}) with scale: {scale}")
-        print(f"Calculated tap coordinates: ({tap_x}, {tap_y})")
-        tap(tap_x, tap_y)
+        tap(location[0] + template.shape[1] // 2, location[1] + template.shape[0] // 2)
         cls()
-        print(f"Last action performed: {action_name}")
+        print(f"last action performed: {action_name}")
         last_performed[action_name] = current_time
         return True
-    print(f"Template not found for action: {action_name}")
+    return False
 
 def load_actions_from_config(config_path):
     with open(config_path, 'r') as file:
@@ -138,6 +120,24 @@ def load_actions_from_config(config_path):
     for action_name, template_path in config['actions'].items():
         actions[action_name] = load_image(open(template_path, 'rb'))
     return actions
+
+def handle_difficulty(difficulty, screenshot, actions, last_performed):
+    levels = {
+        1: [('hard_level', 'hard_level_s')],
+        2: [('z-hard_level', 'z-hard_level_s')],
+        3: [('super_level', 'super_level_s')],
+        4: [('super2_level',)],
+        5: [('super3_level',)]
+    }
+    
+    if difficulty == 0:
+        return
+    
+    # Retrieve levels based on difficulty
+    for level_pair in levels.get(difficulty, []):
+        for level in level_pair:
+            if perform_action(screenshot, actions[level], level, last_performed):
+                return # or continue, based on your loop structure
 
 def get_input(prompt, min_value, max_value):
     while True:
@@ -156,51 +156,25 @@ def cls():
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, 'actions_config.json')
-    
     actions = load_actions_from_config(config_path)
     last_performed = {}
     
     difficulty = get_input("Difficulty [(0)EZA (1)hard (2)z-hard (3)super (4)super2 (5)super3]: ", 0, 5)
-
-
+    
+    cls()
+    
     while True:
+
         image_bytes = take_screenshot()
         screenshot = load_image(image_bytes)
         
-        match difficulty:
-            case 0: 
-                print(".")
-            case 1:
-                if perform_action(screenshot, actions['hard_level'], 'hard_level', last_performed):
-                    continue
-                elif perform_action(screenshot, actions['hard_level_s'], 'hard_level_s', last_performed):
-                    continue       
-            case 2:
-                if perform_action(screenshot, actions['z-hard_level'], 'z-hard_level', last_performed):
-                    continue
-                elif perform_action(screenshot, actions['z-hard_level_s'], 'z-hard_level_s', last_performed):
-                    continue       
-            case 3:
-                if perform_action(screenshot, actions['super_level'], 'super_level', last_performed):
-                    continue
-                elif perform_action(screenshot, actions['super_level_s'], 'super_level_s', last_performed):
-                    continue       
-            case 4:
-                if perform_action(screenshot, actions['super2_level'], 'super2_level', last_performed):
-                    continue 
-            case 5:
-                if perform_action(screenshot, actions['super3_level'], 'super3_level', last_performed):
-                    continue
-             
-        if perform_action(screenshot, actions['friend_request'], 'friend_request', last_performed):
-            continue        
-        if perform_action(screenshot, actions['friend_acc'], 'friend_acc', last_performed):
-            continue
+        handle_difficulty(difficulty, screenshot, actions, last_performed)
+   
         if perform_action(screenshot, actions['attempt_again'], 'attempt_again', last_performed):
             continue
         
         for action_name, template in actions.items():
-            if action_name not in ['friend_acc', 'friend_request', 'hard_level', 'z-hard_level', 'super_level', 'super2_level', 'super3_level' 'hard_level_s', 'z-hard_level_s', 'super_level_s','attempt_again']:
+            if action_name not in ['attempt_again']:
                 if perform_action(screenshot, template, action_name, last_performed):
                     break
 
