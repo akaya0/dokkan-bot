@@ -37,8 +37,8 @@ This program connects to an Android device using ADB (Android Debug Bridge), cap
 ## Troubleshooting
 
 - **Device not found**: Ensure that your device is connected and USB debugging is enabled. Run `adb devices` to check if your device is listed.
-- **Templates not found on Screen**: Even though there are error checks your device might need their own screenshots taken, replace templates accordingly.
-- **Virtual Environment** I strongly advice using conda/venv, because i got no clue what im actually doing. 🫡❤️
+- **Templates not recognized**: Even though there are error checks your device might need their own templates, replace accordingly. (and post an issue for it so I can check it out)
+- **Virtual Environment**: I strongly advice using conda/venv, because i got no clue what im actually doing. 🫡❤️
 
 ## To-Do
 
