@@ -1,7 +1,7 @@
 # Dokkan Bot
 ![ddmugb2-b79a8d4f-76ba-4005-8e20-4650b661b134](https://github.com/user-attachments/assets/5f0395c8-05c8-44b0-b617-561ac1bd2d50)
 
-This program connects to an Android device using ADB (Android Debug Bridge), captures screenshots, and processes these images using OpenCV. It includes functionalities for image matching and type/depth consistency checks.
+This program connects to an Android device using ADB (Android Debug Bridge), captures screenshots, and processes these images using OpenCV. It includes functionalities for image matching and type/depth/resolution consistency checks.
 
 ## Requirements
 
