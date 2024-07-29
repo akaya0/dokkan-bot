@@ -2,14 +2,31 @@ import cv2
 import numpy as np
 import time
 from adbutils import adb
+import adbutils
 import os
 import io
 import json
 import os
+import math
 
-# Connect to the device
-device = adb.device()
+device = adbutils.AdbClient(host="127.0.0.1", port=5037).device() 
+baseY = 1520   
+baseX = 720
 
+result = device.shell("wm size")
+if 'size' in result:
+    resolution = result.split(":")[-1].strip()
+    width, height = resolution.split('x')
+            
+    width_ratio =  int(width) / baseX 
+    height_ratio = int(height) / baseY         
+                    
+    diagonal1 = math.sqrt(int(width)**2 + int(height)**2)
+    diagonal2 = math.sqrt(baseX**2 + baseY**2)
+    overall_scale_ratio = diagonal1 / diagonal2
+            
+    print(f"Overall Scale Ratio{overall_scale_ratio}")
+            
 def take_screenshot():
     try:
         # Execute the screencap command and capture the output
@@ -44,23 +61,31 @@ def load_image(image_bytes):
     return img
 
 def ensure_same_type_and_depth(img, template):
-    if img.dtype != template.dtype or img.shape[2] != template.shape[2]:
+    if img.dtype != template.dtype:
         img = img.astype(np.float32) if template.dtype == np.float32 else img.astype(np.uint8)
         template = template.astype(np.float32) if img.dtype == np.float32 else template.astype(np.uint8)
     return img, template
 
-def resize_image(image, target_size):
-    
-    return cv2.resize(image, target_size, interpolation=cv2.INTER_LINEAR)
 
-def find_template(screenshot, template, resize_target=None, threshold=0.85):
-    # Convert images to grayscale
+def resize_image(image):
+    global width_ratio, height_ratio
+    original_height, original_width = image.shape[:2]
+    # Calculate the new dimensions
+    new_width = int(original_width * width_ratio)
+    new_height = int(original_height * height_ratio)
+    # Resize the image
+    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
+    
+    return resized_image
+
+
+def find_template(screenshot, template, threshold=0.8):
+    #Convert images to grayscale
     screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY) if len(screenshot.shape) == 3 else screenshot
     template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY) if len(template.shape) == 3 else template
     
-    # Resize screenshot to match template resolution if needed
-    if resize_target:
-        screenshot_gray = resize_image(screenshot_gray, resize_target)
+    # Resize screenshot
+    template_gray = resize_image(template_gray)
     
     # Perform template matching
     result = cv2.matchTemplate(screenshot_gray, template_gray, cv2.TM_CCOEFF_NORMED)
@@ -71,12 +96,14 @@ def find_template(screenshot, template, resize_target=None, threshold=0.85):
     
 def tap(x, y):
     device.shell(f"input tap {x} {y}")
-
-def perform_action(screenshot, template, action_name, last_performed, timeout=10):
+    
+    
+def perform_action(screenshot, template, action_name, last_performed, timeout=2):
     current_time = time.time()
+    
     if action_name in last_performed and current_time - last_performed[action_name] < timeout:
         return False
-    
+
     location = find_template(screenshot, template)
     if location:
         tap(location[0] + template.shape[1] // 2, location[1] + template.shape[0] // 2)
@@ -94,7 +121,25 @@ def load_actions_from_config(config_path):
         actions[action_name] = load_image(open(template_path, 'rb'))
     return actions
 
-def get_diff(prompt, min_value, max_value):
+def handle_difficulty(difficulty, screenshot, actions, last_performed):
+    levels = {
+        1: [('hard_level', 'hard_level_s')],
+        2: [('z-hard_level', 'z-hard_level_s')],
+        3: [('super_level', 'super_level_s')],
+        4: [('super2_level',)],
+        5: [('super3_level',)]
+    }
+    
+    if difficulty == 0:
+        return
+    
+    # Retrieve levels based on difficulty
+    for level_pair in levels.get(difficulty, []):
+        for level in level_pair:
+            if perform_action(screenshot, actions[level], level, last_performed):
+                return # or continue, based on your loop structure
+
+def get_input(prompt, min_value, max_value):
     while True:
         try:
             value = int(input(prompt))
@@ -111,52 +156,25 @@ def cls():
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, 'actions_config.json')
-    
     actions = load_actions_from_config(config_path)
     last_performed = {}
     
-    difficulty = get_diff("Difficulty [(0)EZA (1)hard (2)z-hard (3)super (4)super2 (5)super3]: ", 0, 5)
-
+    difficulty = get_input("Difficulty [(0)EZA (1)hard (2)z-hard (3)super (4)super2 (5)super3]: ", 0, 5)
+    
     cls()
     
     while True:
+
         image_bytes = take_screenshot()
         screenshot = load_image(image_bytes)
         
-        match difficulty:
-            case 0: 
-                continue
-            case 1:
-                if perform_action(screenshot, actions['hard_level'], 'hard_level', last_performed):
-                    continue
-                elif perform_action(screenshot, actions['hard_level_s'], 'hard_level_s', last_performed):
-                    continue       
-            case 2:
-                if perform_action(screenshot, actions['z-hard_level'], 'z-hard_level', last_performed):
-                    continue
-                elif perform_action(screenshot, actions['z-hard_level_s'], 'z-hard_level_s', last_performed):
-                    continue       
-            case 3:
-                if perform_action(screenshot, actions['super_level'], 'super_level', last_performed):
-                    continue
-                elif perform_action(screenshot, actions['super_level_s'], 'super_level_s', last_performed):
-                    continue       
-            case 4:
-                if perform_action(screenshot, actions['super2_level'], 'super2_level', last_performed):
-                    continue 
-            case 5:
-                if perform_action(screenshot, actions['super3_level'], 'super3_level', last_performed):
-                    continue
-             
-        if perform_action(screenshot, actions['friend_request'], 'friend_request', last_performed):
-            continue        
-        if perform_action(screenshot, actions['friend_acc'], 'friend_acc', last_performed):
-            continue
+        handle_difficulty(difficulty, screenshot, actions, last_performed)
+   
         if perform_action(screenshot, actions['attempt_again'], 'attempt_again', last_performed):
             continue
         
         for action_name, template in actions.items():
-            if action_name not in ['friend_acc', 'friend_request', 'hard_level', 'z-hard_level', 'super_level', 'hard_level_s', 'z-hard_level_s', 'super_level_s','attempt_again']:
+            if action_name not in ['attempt_again']:
                 if perform_action(screenshot, template, action_name, last_performed):
                     break
 
