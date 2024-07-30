@@ -129,17 +129,22 @@ def tap(x, y):
     
 def perform_action(screenshot, template, action_name, last_performed, timeout=2):
     current_time = time.time()
-    
+    # Check if the action was recently performed and should be skipped
     if action_name in last_performed and current_time - last_performed[action_name] < timeout:
         return False
-
+    # Attempt to find the template within the screenshot
     location = find_template(screenshot, template)
+    
     if location:
+        # Calculate the center of the template for tapping
         tap(location[0] + template.shape[1] // 2, location[1] + template.shape[0] // 2)
+        
         clear_last_line() 
         print(f"last action performed: {action_name}")
+        
         last_performed[action_name] = current_time
         return True
+    
     return False
 
 def load_actions_from_config(config_path):
@@ -192,6 +197,14 @@ def main():
     last_performed = {}
     
     difficulty = args.difficulty
+    
+    exclusion_list = [
+    'friend_request', 
+    'attempt_again',
+    'hard_level', 'hard_level_s', 
+    'z-hard_level', 'z-hard_level_s', 
+    'super_level', 'super_level_s'
+    ]
 
     while True:
 
@@ -199,12 +212,17 @@ def main():
         screenshot = load_image(image_bytes)
         
         handle_difficulty(difficulty, screenshot, actions, last_performed)
-   
+
+        #Higher priority actions
         if perform_action(screenshot, actions['attempt_again'], 'attempt_again', last_performed):
             continue
-        
+        if perform_action(screenshot, actions['friend_request'], 'friend_request', last_performed):
+            continue
+        # Iterate over the actions dictionary
         for action_name, template in actions.items():
-            if action_name not in ['attempt_again']:
+            # Check if the action name is not in the exclusion list
+            if action_name not in exclusion_list:
+                # Perform the action and check if it was successful
                 if perform_action(screenshot, template, action_name, last_performed):
                     break
 

@@ -15,7 +15,6 @@
         "hard_level_s": "./templates/hard_level_s.png",
         "z-hard_level_s": "./templates/z-hard_level_s.png",
         "super_level_s": "./templates/super_level_s.png",
-        "level_menu": "./templates/level_menu.png",
         "attempt_again": "./templates/attempt_again.png",
         "level_up": "./templates/level_up.png",
         "energy_rep": "./templates/energy_rep.png"
