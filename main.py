@@ -8,6 +8,8 @@ import io
 import json
 import os
 import math
+import sys
+import argparse
 
 device = adbutils.AdbClient(host="127.0.0.1", port=5037).device() 
 baseY = 1520   
@@ -25,8 +27,28 @@ if 'size' in result:
     diagonal2 = math.sqrt(baseX**2 + baseY**2)
     overall_scale_ratio = diagonal1 / diagonal2
             
-    print(f"Overall Scale Ratio{overall_scale_ratio}")
-            
+    print(f"Screen Scale Ratio: {overall_scale_ratio}\n")
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description='Dokkan automation script. Farms Dokkan indefinetly on an Android device via ADB and OpenCV.'
+    )
+    parser.add_argument(
+        '-d', '--difficulty', 
+        type=int, 
+        choices=range(0, 6),
+        default=0, 
+        help='Select difficulty level (0: EZA, 1: Hard, 2: Z-Hard, 3: Super, 4: Super2, 5: Super3).'
+    )
+    parser.add_argument(
+        '-c', '--config', 
+        type=str, 
+        default='actions_config.json', 
+        help='Path to the configuration file (JSON).'
+    )
+
+    return parser.parse_args()
+
 def take_screenshot():
     try:
         # Execute the screencap command and capture the output
@@ -78,6 +100,13 @@ def resize_image(image):
     
     return resized_image
 
+def clear_last_line():
+    # Move the cursor up one line
+    sys.stdout.write('\033[A')
+    # Clear the line
+    sys.stdout.write('\033[K')
+    # Flush the output to ensure it is displayed immediately
+    sys.stdout.flush()
 
 def find_template(screenshot, template, threshold=0.8):
     #Convert images to grayscale
@@ -107,7 +136,7 @@ def perform_action(screenshot, template, action_name, last_performed, timeout=2)
     location = find_template(screenshot, template)
     if location:
         tap(location[0] + template.shape[1] // 2, location[1] + template.shape[0] // 2)
-        cls()
+        clear_last_line() 
         print(f"last action performed: {action_name}")
         last_performed[action_name] = current_time
         return True
@@ -154,15 +183,16 @@ def cls():
     os.system('cls' if os.name=='nt' else 'clear')
 
 def main():
+    args = parse_arguments()
+        
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(script_dir, 'actions_config.json')
+    config_path = os.path.join(script_dir, args.config)
+    
     actions = load_actions_from_config(config_path)
     last_performed = {}
     
-    difficulty = get_input("Difficulty [(0)EZA (1)hard (2)z-hard (3)super (4)super2 (5)super3]: ", 0, 5)
-    
-    cls()
-    
+    difficulty = args.difficulty
+
     while True:
 
         image_bytes = take_screenshot()
