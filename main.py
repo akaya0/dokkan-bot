@@ -14,7 +14,9 @@ import argparse
 device = adbutils.AdbClient(host="127.0.0.1", port=5037).device() 
 baseY = 1520   
 baseX = 720
+succ = 0
 
+    
 result = device.shell("wm size")
 if 'size' in result:
     resolution = result.split(":")[-1].strip()
@@ -27,7 +29,7 @@ if 'size' in result:
     diagonal2 = math.sqrt(baseX**2 + baseY**2)
     overall_scale_ratio = diagonal1 / diagonal2
             
-    print(f"Screen Scale Ratio: {overall_scale_ratio}\n")
+    print(f"screen scale ratio: {overall_scale_ratio}\n\n")
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -37,8 +39,21 @@ def parse_arguments():
         '-d', '--difficulty', 
         type=int, 
         choices=range(0, 6),
-        default=0, 
+        default=3, 
         help='Select difficulty level (0: EZA, 1: Hard, 2: Z-Hard, 3: Super, 4: Super2, 5: Super3).'
+    )
+    parser.add_argument(
+        '-s', '--successes', 
+        type=int, 
+        default= 9999999, 
+        help='How often the level should be cleared'
+    )
+    parser.add_argument(
+        '-t', '--threshold', 
+        type=float, 
+        default=0.8,
+        choices=range(0, 2),
+        help='a threshold can be set to determine the minimum quality or strength of the detected features.'
     )
     parser.add_argument(
         '-c', '--config', 
@@ -108,15 +123,33 @@ def clear_last_line():
     # Flush the output to ensure it is displayed immediately
     sys.stdout.flush()
 
-def find_template(screenshot, template, threshold=0.8):
+def find_template(screenshot, template):
+    global args
+    threshold = args.threshold
     #Convert images to grayscale
     screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY) if len(screenshot.shape) == 3 else screenshot
     template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY) if len(template.shape) == 3 else template
-    
+
     # Resize screenshot
     template_gray = resize_image(template_gray)
+    '''Debug Output
+    success, encoded_image = cv2.imencode('.png', screenshot_gray)
+    if success:
+    # Convert the encoded image to a byte array
+        buffer = encoded_image.tobytes()
+
+    # Save the buffer to a file
+        with open('output_image.png', 'wb') as f:
+            f.write(buffer)
+    else:
+        print("Error encoding image")
     
-    # Perform template matching
+    cv2.imshow("window_name", screenshot_gray)
+
+    cv2.waitKey(0)
+    '''
+    #Perform template matching
+    #min_val min_loc for dbg purposes
     result = cv2.matchTemplate(screenshot_gray, template_gray, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
 
@@ -127,20 +160,31 @@ def tap(x, y):
     device.shell(f"input tap {x} {y}")
     
     
-def perform_action(screenshot, template, action_name, last_performed, timeout=2):
+def perform_action(screenshot, template, action_name, last_performed, timeout=5):
+    global succ
     current_time = time.time()
     # Check if the action was recently performed and should be skipped
     if action_name in last_performed and current_time - last_performed[action_name] < timeout:
         return False
+        
     # Attempt to find the template within the screenshot
     location = find_template(screenshot, template)
     
     if location:
         # Calculate the center of the template for tapping
-        tap(location[0] + template.shape[1] // 2, location[1] + template.shape[0] // 2)
+        tap_x = int(location[0] + (template.shape[1] / 2) * width_ratio)
+        tap_y = int(location[1] + (template.shape[0] / 2) * height_ratio)
+        tap(tap_x, tap_y)
         
-        clear_last_line() 
-        print(f"last action performed: {action_name}")
+        if action_name == 'next_level':
+            succ = succ + 1
+        elif action_name == 'attempt_again':
+            succ = succ + 1 
+        
+        clear_last_line()
+        clear_last_line()
+        print(f"Found {action_name} at location: ({location[0]}, {location[1]}) scaled coordinates: ({tap_x}, {tap_y})")
+        print(f"successes:{succ}")
         
         last_performed[action_name] = current_time
         return True
@@ -187,8 +231,10 @@ def get_input(prompt, min_value, max_value):
 def cls():
     os.system('cls' if os.name=='nt' else 'clear')
 
+args = parse_arguments()
+
 def main():
-    args = parse_arguments()
+
         
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, args.config)
@@ -204,9 +250,11 @@ def main():
     'hard_level', 'hard_level_s', 
     'z-hard_level', 'z-hard_level_s', 
     'super_level', 'super_level_s'
+    'super2_level',
+    'super3_level'
     ]
 
-    while True:
+    while succ < args.successes:
 
         image_bytes = take_screenshot()
         screenshot = load_image(image_bytes)

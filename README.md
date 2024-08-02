@@ -36,13 +36,17 @@ This program connects to an Android device using ADB (Android Debug Bridge), cap
 
 ## Troubleshooting
 
-- **Device not found**: Ensure that your device is connected and USB debugging is enabled. Run `adb devices` to check if your device is listed.
+- **Device not found**: Ensure that your device is connected and USB debugging is enabled. Run `adb devices` to check if your device is listed. And check for other adb instances.
 - **Templates not recognized**: Even though there are error checks your device might need their own templates, replace accordingly. (and post an issue for it so I can check it out)
 - **Virtual Environment**: I strongly advice using conda/venv, because i got no clue what im actually doing. 🫡❤️
 
 ## To-Do
 
 - **Tournament**: I think the most important one is to add a tournament support, I mean at a normal rate there's no way to beat it otherwise?!
+
+## Notes
+
+ I'm pretty new to image recognition and such, and this script seems really slow (for just matching grayscales yk). This is most likley because this is using mainly the CPU? I'm currently reading through the opencv docs and I think there are ways to use a dedicated GPU to handle the image processing. So we will see-- 
 
 ## Disclaimer
 
