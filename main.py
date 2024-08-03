@@ -10,6 +10,7 @@ import os
 import math
 import sys
 import argparse
+import multiprocessing
 
 device = adbutils.AdbClient(host="127.0.0.1", port=5037).device() 
 baseY = 1520   
@@ -51,7 +52,7 @@ def parse_arguments():
     parser.add_argument(
         '-t', '--threshold', 
         type=float, 
-        default=0.8,
+        default=0.95,
         choices=range(0, 2),
         help='a threshold can be set to determine the minimum quality or strength of the detected features.'
     )
@@ -111,7 +112,7 @@ def resize_image(image):
     new_width = int(original_width * width_ratio)
     new_height = int(original_height * height_ratio)
     # Resize the image
-    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
+    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
     
     return resized_image
 
@@ -132,25 +133,10 @@ def find_template(screenshot, template):
 
     # Resize screenshot
     template_gray = resize_image(template_gray)
-    '''Debug Output
-    success, encoded_image = cv2.imencode('.png', screenshot_gray)
-    if success:
-    # Convert the encoded image to a byte array
-        buffer = encoded_image.tobytes()
 
-    # Save the buffer to a file
-        with open('output_image.png', 'wb') as f:
-            f.write(buffer)
-    else:
-        print("Error encoding image")
-    
-    cv2.imshow("window_name", screenshot_gray)
-
-    cv2.waitKey(0)
-    '''
     #Perform template matching
     #min_val min_loc for dbg purposes
-    result = cv2.matchTemplate(screenshot_gray, template_gray, cv2.TM_CCOEFF_NORMED)
+    result = cv2.matchTemplate(screenshot_gray , template_gray, cv2.TM_CCORR_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
 
     # Return the location if the match value exceeds the threshold
@@ -160,7 +146,7 @@ def tap(x, y):
     device.shell(f"input tap {x} {y}")
     
     
-def perform_action(screenshot, template, action_name, last_performed, timeout=5):
+def perform_action(screenshot, template, action_name, last_performed, timeout=10):
     global succ
     current_time = time.time()
     # Check if the action was recently performed and should be skipped
