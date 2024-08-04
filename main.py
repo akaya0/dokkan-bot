@@ -52,7 +52,7 @@ def parse_arguments():
     parser.add_argument(
         '-t', '--threshold', 
         type=float, 
-        default=0.95,
+        default=0.81,
         choices=range(0, 2),
         help='a threshold can be set to determine the minimum quality or strength of the detected features.'
     )
@@ -136,7 +136,7 @@ def find_template(screenshot, template):
 
     #Perform template matching
     #min_val min_loc for dbg purposes
-    result = cv2.matchTemplate(screenshot_gray , template_gray, cv2.TM_CCORR_NORMED)
+    result = cv2.matchTemplate(screenshot_gray , template_gray, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
 
     # Return the location if the match value exceeds the threshold
@@ -232,7 +232,7 @@ def main():
     
     exclusion_list = [
     'friend_request', 
-    'attempt_again',
+    'confirm_completion',
     'hard_level', 'hard_level_s', 
     'z-hard_level', 'z-hard_level_s', 
     'super_level', 'super_level_s'
@@ -248,8 +248,6 @@ def main():
         handle_difficulty(difficulty, screenshot, actions, last_performed)
 
         #Higher priority actions
-        if perform_action(screenshot, actions['attempt_again'], 'attempt_again', last_performed):
-            continue
         if perform_action(screenshot, actions['friend_request'], 'friend_request', last_performed):
             continue
         # Iterate over the actions dictionary
@@ -259,6 +257,8 @@ def main():
                 # Perform the action and check if it was successful
                 if perform_action(screenshot, template, action_name, last_performed):
                     break
+        if perform_action(screenshot, actions['confirm_completion'], 'confirm_completion', last_performed):
+            continue
 
 if __name__ == "__main__":
     main()
